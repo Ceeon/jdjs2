@@ -140,6 +140,38 @@
         height: 40px;
       }
     }
+    .table-container {
+      overflow-y: auto;
+      max-height: 400px;
+    }
+
+    table {
+      width: 100%;
+      margin-top: 20px;
+      border-collapse: separate;
+      border-spacing: 0;
+      font-size: 14px;
+    }
+
+    thead {
+      position: sticky;
+      top: 0;
+      background-color: #FFE7D0;
+      z-index: 1;
+    }
+
+    /* New style for event input */
+    .event-input-container {
+      margin-top: 20px;
+    }
+
+    #eventInput {
+      width: 100%;
+      padding: 10px;
+      font-size: 16px;
+      border: 1px solid #FC6E20;
+      border-radius: 5px;
+    }
   </style>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
@@ -147,27 +179,33 @@
 <body>
   <div class="container">
     <div class="timer">00:00:00</div>
+    <div class="event-input-container">
+      <input type="text" id="eventInput" placeholder="输入事件描述">
+    </div>
     <div class="button-container">
       <div class="record-btn">记录</div>
       <div class="copy-btn">复制表格</div>
     </div>
     <div class="date-selector"></div>
-    <table>
-      <thead>
-        <tr>
-          <th>时间</th>
-          <th>小时</th>
-          <th>事件</th>
-          <th>操作</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>时间</th>
+            <th>小时</th>
+            <th>事件</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
   </div>
   <script>
     // 初始化Firebase
     firebase.initializeApp({
-      apiKey: "AIzaSyD60SMapmLNsIwL7sD9YOboBkaRIII124c",
+
+       apiKey: "AIzaSyD60SMapmLNsIwL7sD9YOboBkaRIII124c",
       authDomain: "jdjs-af509.firebaseapp.com",
       databaseURL: "https://jdjs-af509-default-rtdb.asia-southeast1.firebasedatabase.app/",
       projectId: "jdjs-af509",
@@ -185,7 +223,8 @@
     const copyBtn = document.querySelector(".copy-btn");
     const tbody = document.querySelector("tbody");
     const dateSelector = document.querySelector(".date-selector");
-
+    const eventInput = document.getElementById("eventInput");
+    
     let time = Number(localStorage.getItem("time")) || 0;
     let interval;
     let currentDate = new Date();
@@ -341,18 +380,20 @@
 
     recordBtn.addEventListener("click", () => {
       const now = Date.now();
+      const eventDescription = eventInput.value.trim();
       database.ref('records').orderByChild('endTime').limitToLast(1).once('value', (snapshot) => {
         if (snapshot.exists()) {
           const lastRecordSnapshot = snapshot.val();
           const lastRecordKey = Object.keys(lastRecordSnapshot)[0];
           const lastRecord = lastRecordSnapshot[lastRecordKey];
-          checkAndSplitRecord(lastRecord.endTime, now, "");
+          checkAndSplitRecord(lastRecord.endTime, now, eventDescription);
         } else {
-          checkAndSplitRecord(now, now, "");
+          checkAndSplitRecord(now, now, eventDescription);
         }
         resetTimer();
         startTimer();
         loadRecords();
+        eventInput.value = ""; // Clear the input field after recording
       });
     });
 
