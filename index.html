@@ -31,6 +31,11 @@
       border-radius: 30px;
     }
 
+    .timer .seconds {
+      color: #f9d399; /* 淡化秒数颜色 */
+      font-weight: normal; /* 移除秒数的粗体 */
+    }
+
     .button-container {
       display: flex;
       justify-content: space-around;
@@ -257,7 +262,7 @@
       const hours = Math.floor(ms / 3600000);
       const minutes = Math.floor((ms - hours * 3600000) / 60000);
       const seconds = Math.floor((ms - hours * 3600000 - minutes * 60000) / 1000);
-      return `${padZero(hours)}:${padZero(minutes)}:${padZero(seconds)}`;
+      return `${padZero(hours)}:${padZero(minutes)}:<span class="seconds">${padZero(seconds)}</span>`;
     }
 
     function formatRecordTime(timestamp) {
@@ -274,7 +279,7 @@
       const startTime = Date.now() - time;
       interval = setInterval(() => {
         time = Date.now() - startTime;
-        timer.textContent = formatTime(time);
+        timer.innerHTML = formatTime(time);
         localStorage.setItem("time", time);
       }, 1000);
     }
