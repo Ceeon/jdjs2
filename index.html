@@ -43,7 +43,8 @@
     }
 
     .record-btn,
-    .copy-btn {
+    .copy-btn,
+    .feishu-btn {
       padding: 10px;
       background-color: #FC6E20;
       text-align: center;
@@ -57,9 +58,14 @@
     }
 
     .record-btn:hover,
-    .copy-btn:hover {
+    .copy-btn:hover,
+    .feishu-btn:hover {
       box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
       transform: translateY(-2px);
+    }
+
+    .feishu-btn {
+      background-color: #FC6E20; /* 飞书蓝色 */
     }
 
     .date-selector {
@@ -121,7 +127,8 @@
       }
 
       .record-btn,
-      .copy-btn {
+      .copy-btn,
+      .feishu-btn {
         font-size: 18px;
         width: calc(4em + 56px);
       }
@@ -174,7 +181,7 @@
       width: 100%;
       padding: 10px;
       font-size: 16px;
-      border: 1px solid #FC6E20;
+      border: 1px solid #f79e6e;
       border-radius: 5px;
     }
   </style>
@@ -190,6 +197,8 @@
     <div class="button-container">
       <div class="record-btn">记录</div>
       <div class="copy-btn">复制表格</div>
+      <!-- 新增发送飞书按钮 -->
+      <div class="feishu-btn">发送飞书</div>
     </div>
     <div class="date-selector"></div>
     <div class="table-container">
@@ -226,6 +235,7 @@
     const timer = document.querySelector(".timer");
     const recordBtn = document.querySelector(".record-btn");
     const copyBtn = document.querySelector(".copy-btn");
+    const feishuBtn = document.querySelector(".feishu-btn");
     const tbody = document.querySelector("tbody");
     const dateSelector = document.querySelector(".date-selector");
     const eventInput = document.getElementById("eventInput");
@@ -272,7 +282,10 @@
 
     function formatRecordDate(timestamp) {
       const date = new Date(timestamp);
-      return date.toLocaleDateString("zh-CN");
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}/${month}/${day}`;
     }
 
     function startTimer() {
@@ -380,7 +393,7 @@
         date: formatRecordDate(endTime),
       });
 
-      location.reload(); // 刷新页面以显示更新后的记录
+      location.reload(); // 刷新页面以显示更新后记录
     }
 
     function createDateString(date) {
@@ -414,7 +427,7 @@
         midnightStartDate.setHours(23, 59, 59, 999);
         const midnightEndDate = new Date(endDate);
         midnightEndDate.setHours(0, 0, 0, 0);
-        saveRecord(startTime, midnightStartDate.getTime(), name + " (第一天部分)");
+        saveRecord(startTime, midnightStartDate.getTime(), name + " (一天部分)");
         saveRecord(midnightEndDate.getTime(), endTime, name + " (第二天部分)");
       } else {
         saveRecord(startTime, endTime, name);
@@ -477,14 +490,94 @@
       tempTextArea.select();
       try {
         document.execCommand('copy');
-        alert('表格内容已复制到剪贴板,现在可以直接粘贴到Excel中');
+        alert('表格内容已复制到剪贴板,现在可以粘贴到Excel中');
       } catch (err) {
         console.error('复制失败：', err);
-        alert('复制失败,请手动选择表格并复制');
+        alert('复制失败,请手动选择��复制');
       } finally {
         document.body.removeChild(tempTextArea);
       }
     });
+
+    feishuBtn.addEventListener("click", sendToFeishu);
+
+    async function sendToFeishu() {
+      const rows = document.querySelectorAll("tbody tr");
+      console.log(`找到 ${rows.length} 行数据`);
+      
+      if (rows.length === 0) {
+        alert('没有找到数据可以发送');
+        return;
+      }
+
+      const date = formatRecordDate(currentDate.getTime());
+      console.log(`当前日期: ${date}`);
+
+      for (let i = 0; i < rows.length; i++) {
+        const cells = rows[i].querySelectorAll("td");
+        if (cells.length < 3) {
+          console.error(`第 ${i+1} 行数据不完整，跳过`);
+          continue;
+        }
+
+        const time = cells[0].textContent;
+        const hours = parseFloat(cells[1].textContent);
+        const event = cells[2].querySelector("textarea").value.trim();
+
+        console.log(`第 ${i+1} 行数据:`, { date, time, hours, event });
+
+        if (!time || isNaN(hours)) {
+          console.error(`第 ${i+1} 行数据无效，跳过`);
+          continue;
+        }
+
+        const record = {
+          date: date,
+          time: time,
+          hour: hours,
+          things: event
+        };
+
+        const message = {
+          msg_type: "text",
+          content: record
+        };
+
+        console.log(`准备发送第 ${i+1} 条消息:`, JSON.stringify(message));
+        
+        try {
+          await sendMessage(message);
+          console.log(`第 ${i+1} 条消息发送成功`);
+        } catch (error) {
+          console.error(`第 ${i+1} 条消息发送失败:`, error);
+        }
+
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+
+      alert('所有数据已发送到飞书');
+    }
+
+    function sendMessage(message) {
+      return new Promise((resolve, reject) => {
+        fetch('https://o90p05z3t4.feishu.cn/base/automation/webhook/event/AFPJaWP3Fw5w0dhsTUNc8dBqnIe', {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(message)
+        })
+        .then(() => {
+          console.log('请求已发送，但无法确认结果');
+          resolve();
+        })
+        .catch((error) => {
+          console.error('发送失败:', error);
+          reject(error);
+        });
+      });
+    }
 
     startTimer();
     createSevenDaysButtons();
